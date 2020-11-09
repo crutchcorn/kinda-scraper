@@ -1,3 +1,4 @@
+import json
 import os
 from errno import EEXIST
 from os import makedirs
@@ -18,11 +19,18 @@ def findTime():
 
 
 def findTags():
-    time_and_filed_container = driver.find_element_by_css_selector('.js_meta-time').find_element_by_xpath('./../..')
-    dropdown_el = time_and_filed_container.find_element_by_css_selector('.js_dropdown')
-    tag_els = dropdown_el.find_elements_by_css_selector('a')
-    tags: list[str] = map(lambda el: el.text, tag_els)
-    return tags
+    try:
+        time_and_filed_container = driver.find_element_by_css_selector('.js_meta-time').find_element_by_xpath('./../..')
+        dropdown_el = time_and_filed_container.find_element_by_css_selector('.js_dropdown')
+        tag_els = dropdown_el.find_elements_by_css_selector('a')
+        tags: list[str] = list(map(lambda el: el.get_property('innerText'), tag_els))
+        return tags
+    except NoSuchElementException:
+        return []
+
+def findAuthor():
+    authorEl = driver.find_element_by_css_selector('.js_meta-time').find_element_by_xpath('./../../../div[1]')
+    return authorEl.text
 
 
 def findImgSrc(imgEl: WebElement):
@@ -31,6 +39,7 @@ def findImgSrc(imgEl: WebElement):
         return ['', '']
     img_ids = re.findall(r'^.*\/(.*?)\s80w', srcset)
     return [f'https://i.kinja-img.com/gawker-media/image/upload/{img_ids[0]}', img_ids[0]]
+
 
 def findVidSrc(vidEl: WebElement):
     postersrc = vidEl.get_attribute('data-postersrc')
@@ -101,6 +110,18 @@ def downloadPage(url: str):
         text_file.write(inner_html)
 
     # Metadata
+    tags = findTags()
+    time = findTime()
+    author = findAuthor()
+    print(author, time)
+    metadict = {
+        "tags": tags,
+        "time": time,
+        "author": author
+    }
+    with open(os.path.join(stub_folder_path, 'meta.json'), 'w') as fp:
+        json.dump(metadict, fp)
+
 
 filepath = os.path.join(os.path.dirname(__file__), 'article_list.txt')
 
