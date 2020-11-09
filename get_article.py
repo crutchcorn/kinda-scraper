@@ -10,6 +10,21 @@ import re
 driver = webdriver.Chrome()
 driver.implicitly_wait(1)
 
+
+def findTime():
+    js_meta_a_tag = driver.find_element_by_css_selector('.js_meta-time')
+    time_tag = js_meta_a_tag.find_element_by_xpath('./..')
+    return time_tag.get_attribute('datetime')
+
+
+def findTags():
+    time_and_filed_container = driver.find_element_by_css_selector('.js_meta-time').find_element_by_xpath('./../..')
+    dropdown_el = time_and_filed_container.find_element_by_css_selector('.js_dropdown')
+    tag_els = dropdown_el.find_elements_by_css_selector('a')
+    tags: list[str] = map(lambda el: el.text, tag_els)
+    return tags
+
+
 def findImgSrc(imgEl: WebElement):
     srcset = imgEl.get_attribute('srcset')
     if not srcset:
