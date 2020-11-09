@@ -2,9 +2,10 @@ import json
 import os
 from errno import EEXIST
 from os import makedirs
+from urllib.error import HTTPError
 from urllib.request import urlopen
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException
 from selenium.webdriver.remote.webelement import WebElement
 import re
 
@@ -28,6 +29,7 @@ def findTags():
     except NoSuchElementException:
         return []
 
+
 def findAuthor():
     authorEl = driver.find_element_by_css_selector('.js_meta-time').find_element_by_xpath('./../../../div[1]')
     return authorEl.text
@@ -47,6 +49,13 @@ def findVidSrc(vidEl: WebElement):
         return ['', '']
     vid_ids = re.findall(r'^.*\/(.*?)\..*?$', postersrc)
     return [f'https://i.kinja-img.com/gawker-media/image/upload/{vid_ids[0]}.mp4', f'{vid_ids[0]}.mp4']
+
+
+def findTitle():
+    try:
+        return driver.find_element_by_css_selector('h1').get_property('innerHTML')
+    except NoSuchElementException:
+        return ''
 
 
 def make_sure_path_exists(path):
@@ -84,7 +93,10 @@ def downloadPage(url: str):
             print(img_src, img_id)
             img_path = os.path.join(stub_folder_path, img_id)
             f = open(img_path, 'wb')
-            f.write(urlopen(img_src).read())
+            try:
+                f.write(urlopen(img_src).read())
+            except HTTPError:
+                ''
             f.close()
     except NoSuchElementException:
         ''
@@ -99,7 +111,10 @@ def downloadPage(url: str):
             print(vid_src, vid_id)
             vid_path = os.path.join(stub_folder_path, vid_id)
             f = open(vid_path, 'wb')
-            f.write(urlopen(vid_src).read())
+            try:
+                f.write(urlopen(vid_src).read())
+            except HTTPError:
+                ''
             f.close()
     except NoSuchElementException:
         ''
@@ -113,11 +128,13 @@ def downloadPage(url: str):
     tags = findTags()
     time = findTime()
     author = findAuthor()
+    title = findTitle()
     print(author, time)
     metadict = {
         "tags": tags,
         "time": time,
-        "author": author
+        "author": author,
+        "title": title
     }
     with open(os.path.join(stub_folder_path, 'meta.json'), 'w') as fp:
         json.dump(metadict, fp)
@@ -128,8 +145,11 @@ filepath = os.path.join(os.path.dirname(__file__), 'article_list.txt')
 list_file = open(filepath, "r").read().split('\n')
 
 for line in list_file:
-    driver.get(line)
-    downloadPage(line)
+    try:
+        driver.get(line)
+        downloadPage(line)
+    except InvalidArgumentException:
+        ''
 
 # close the browser window
 driver.quit()

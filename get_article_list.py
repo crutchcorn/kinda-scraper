@@ -9,7 +9,7 @@ driver.implicitly_wait(30)
 def findNextButton():
 
     return driver.find_element_by_css_selector(
-        "[data-ga=\"\\[\\[\\\"Front page click\\\",\\\"More stories click\\\"\\]\\]\"]")
+        "[data-ga*=\"More stories click\"]")
 
 
 def findArticles():
@@ -22,7 +22,7 @@ def findLink(articleEl: WebElement):
 
 
 # Navigate to the application home page
-driver.get("https://rockmandash12.kinja.com/")
+driver.get("https://kinja.com/rockmandash12")
 
 links = []
 done = False
