@@ -17,6 +17,14 @@ def findImgSrc(imgEl: WebElement):
     img_ids = re.findall(r'^.*\/(.*?)\s80w', srcset)
     return [f'https://i.kinja-img.com/gawker-media/image/upload/{img_ids[0]}', img_ids[0]]
 
+def findVidSrc(vidEl: WebElement):
+    postersrc = vidEl.get_attribute('data-postersrc')
+    if not postersrc:
+        return ['', '']
+    vid_ids = re.findall(r'^.*\/(.*?)\..*?$', postersrc)
+    return [f'https://i.kinja-img.com/gawker-media/image/upload/{vid_ids[0]}.mp4', f'{vid_ids[0]}.mp4']
+
+
 def make_sure_path_exists(path):
     try:
         makedirs(path)
@@ -43,16 +51,34 @@ def downloadPage(url: str):
     print('stub', stub)
 
     # Image downloading
-    imgs = post_body.find_elements_by_css_selector('img')
-    for img in imgs:
-        img_src, img_id = findImgSrc(img)
-        if not img_src:
-            continue
-        print(img_src, img_id)
-        img_path = os.path.join(stub_folder_path, img_id)
-        f = open(img_path, 'wb')
-        f.write(urlopen(img_src).read())
-        f.close()
+    try:
+        imgs = post_body.find_elements_by_css_selector('img')
+        for img in imgs:
+            img_src, img_id = findImgSrc(img)
+            if not img_src:
+                continue
+            print(img_src, img_id)
+            img_path = os.path.join(stub_folder_path, img_id)
+            f = open(img_path, 'wb')
+            f.write(urlopen(img_src).read())
+            f.close()
+    except NoSuchElementException:
+        ''
+
+    # Video downloading
+    try:
+        vids = post_body.find_elements_by_css_selector('video')
+        for vid in vids:
+            vid_src, vid_id = findVidSrc(vid)
+            if not vid_src:
+                continue
+            print(vid_src, vid_id)
+            vid_path = os.path.join(stub_folder_path, vid_id)
+            f = open(vid_path, 'wb')
+            f.write(urlopen(vid_src).read())
+            f.close()
+    except NoSuchElementException:
+        ''
 
     # Post HTML
     inner_html: str = post_body.get_property('innerHTML')
