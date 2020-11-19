@@ -2,6 +2,7 @@ import json
 import os
 from errno import EEXIST
 from os import makedirs
+from time import sleep
 from urllib.error import HTTPError
 from urllib.request import urlopen
 from selenium import webdriver
@@ -10,7 +11,7 @@ from selenium.webdriver.remote.webelement import WebElement
 import re
 
 driver = webdriver.Chrome()
-driver.implicitly_wait(1)
+driver.implicitly_wait(3)
 
 
 def findTime():
@@ -38,7 +39,15 @@ def findAuthor():
 def findImgSrc(imgEl: WebElement):
     srcset = imgEl.get_attribute('srcset')
     if not srcset:
-        return ['', '']
+        srcset = imgEl.get_attribute('data-srcset')
+    if not srcset:
+        src = imgEl.get_attribute('src')
+        if not src:
+            return ['', '']
+        src_ids = re.findall(r'^.*\/(.*?)$', src)
+        if len(src_ids) == 0 or src_ids[0].startswith('http'):
+            return ['', '']
+        return [f'https://i.kinja-img.com/gawker-media/image/upload/{src_ids[0]}', src_ids[0]]
     img_ids = re.findall(r'^.*\/(.*?)\s80w', srcset)
     return [f'https://i.kinja-img.com/gawker-media/image/upload/{img_ids[0]}', img_ids[0]]
 
@@ -87,8 +96,11 @@ def downloadPage(url: str):
     try:
         imgs = post_body.find_elements_by_css_selector('img')
         for img in imgs:
+            sleep(.1)
+            print(img.get_attribute('outerHTML'))
             img_src, img_id = findImgSrc(img)
             if not img_src:
+                raise Exception('No img src found')
                 continue
             print(img_src, img_id)
             img_path = os.path.join(stub_folder_path, img_id)
@@ -107,6 +119,7 @@ def downloadPage(url: str):
         for vid in vids:
             vid_src, vid_id = findVidSrc(vid)
             if not vid_src:
+                raise Exception('No video src found')
                 continue
             print(vid_src, vid_id)
             vid_path = os.path.join(stub_folder_path, vid_id)
@@ -139,6 +152,10 @@ def downloadPage(url: str):
     with open(os.path.join(stub_folder_path, 'meta.json'), 'w') as fp:
         json.dump(metadict, fp)
 
+# driver.get('https://rockmandash12.kinja.com/yu-no-is-more-than-just-an-old-visual-novel-1835507618')
+# sleep(5)
+# driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+# downloadPage('https://rockmandash12.kinja.com/yu-no-is-more-than-just-an-old-visual-novel-1835507618')
 
 filepath = os.path.join(os.path.dirname(__file__), 'article_list.txt')
 
@@ -147,6 +164,8 @@ list_file = open(filepath, "r").read().split('\n')
 for line in list_file:
     try:
         driver.get(line)
+        sleep(1)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         downloadPage(line)
     except InvalidArgumentException:
         ''
