@@ -1,3 +1,4 @@
+import json
 import re
 
 from bs4 import BeautifulSoup
@@ -29,11 +30,26 @@ def findVidSrc(vidEl):
     vid_ids = re.findall(r'^.*\/(.*?)\..*?$', postersrc)
     return [f'https://i.kinja-img.com/gawker-media/image/upload/{vid_ids[0]}.mp4', f'{vid_ids[0]}.mp4']
 
+def clean_me(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    for s in soup(['script', 'style']):
+        s.decompose()
+    return ' '.join(soup.stripped_strings)
 
-html_doc = '';
+html_doc = ''
 
 with open('demo.html', 'r', encoding="utf8") as file:
     html_doc = file.read()
+
+post_meta = {}
+
+with open('demo.json', 'r', encoding="utf8") as file:
+    post_meta = json.loads(file.read())
+
+if post_meta['author'] == 'Kevin Mai - Reikaze':
+    post_meta['author'] = 'reikaze'
+
+post_meta['title'] = clean_me(post_meta['title'])
 
 soup = BeautifulSoup(html_doc, 'html.parser')
 
@@ -60,6 +76,9 @@ for videoOrImgContainer in soup.findAll(class_="js_lazy-image"):
         source['type'] = "video/mp4"
         source['src'] = "./" + vidSrc
         vid.append(source)
+        vid['autoplay'] = ""
+        vid['loop'] = ""
+        vid['muted'] = ""
         videoOrImgContainer.replace_with(vid)
     if not not img:
         alt = img['alt']
@@ -82,4 +101,22 @@ for iframe in soup.findAll('iframe'):
     newIframe = BeautifulSoup('<iframe width="560" height="315" src="' + newSrc + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>', 'html.parser')
     iframe.replace_with(newIframe)
 
-print(soup)
+finalHTML = soup.prettify()
+
+finalMD = '''
+---
+{{
+title: "{title}",
+tags: {tags},
+authors: ['{author}'],
+published: '{time}',
+attached: [],
+license: 'cc-by-4',
+oldArticle: true
+}}
+---
+
+{article}
+'''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=soup).strip()
+
+print(finalMD)
