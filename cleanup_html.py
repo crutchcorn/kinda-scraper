@@ -36,91 +36,101 @@ def clean_me(html):
         s.decompose()
     return ' '.join(soup.stripped_strings)
 
-html_doc = ''
+import os
 
-with open('demo.html', 'r', encoding="utf8") as file:
-    html_doc = file.read()
+for entry in os.scandir(os.path.join(os.path.dirname(__file__), 'dist')):
+    print(entry.name)
+    backup = os.path.join(entry, 'backup.html')
+    meta = os.path.join(entry, 'meta.json')
 
-post_meta = {}
+    html_doc = ''
 
-with open('demo.json', 'r', encoding="utf8") as file:
-    post_meta = json.loads(file.read())
+    with open(backup, 'r', encoding="utf8") as file:
+        html_doc = file.read()
 
-if post_meta['author'] == 'Kevin Mai - Reikaze':
-    post_meta['author'] = 'reikaze'
+    post_meta = {}
 
-post_meta['title'] = clean_me(post_meta['title'])
+    with open(meta, 'r', encoding="utf8") as file:
+        post_meta = json.loads(file.read())
 
-soup = BeautifulSoup(html_doc, 'html.parser')
+    if post_meta['author'] == 'Kevin Mai - Reikaze':
+        post_meta['author'] = 'reikaze'
 
-# Remove ads
-[x.extract() for x in soup.findAll(class_='swappable-mobile-ad-container')]
-[x.extract() for x in soup.findAll(class_='ad-mobile-dynamic')]
-[x.extract() for x in soup.findAll(class_='movable-ad')]
+    post_meta['title'] = clean_me(post_meta['title'])
 
-# Remove magnifying glass
-[x.extract() for x in soup.findAll(class_='magnifier')]
+    soup = BeautifulSoup(html_doc, 'html.parser')
 
-for imageWrapper in soup.findAll(class_="image-hydration-wrapper"):
-    # For some reason, image wrappers have a padding-bottom of a lot. Remove them and move on
-    imageWrapper['style'] = ''
+    # Remove ads
+    [x.extract() for x in soup.findAll(class_='swappable-mobile-ad-container')]
+    [x.extract() for x in soup.findAll(class_='ad-mobile-dynamic')]
+    [x.extract() for x in soup.findAll(class_='movable-ad')]
 
-for videoOrImgContainer in soup.findAll(class_="js_lazy-image"):
-    vid = videoOrImgContainer.find('video')
-    img = videoOrImgContainer.find('img')
-    if not not vid:
-        _, vidSrc = findVidSrc(vid)
-        vid.attrs = {}
-        vid.clear()
-        source = soup.new_tag('source')
-        source['type'] = "video/mp4"
-        source['src'] = "./" + vidSrc
-        vid.append(source)
-        vid['autoplay'] = ""
-        vid['loop'] = ""
-        vid['muted'] = ""
-        videoOrImgContainer.replace_with(vid)
-    if not not img:
-        alt = img['alt']
-        _, imgSrc = findImgSrc(img)
-        img.attrs = {}
-        img['alt'] = alt
-        img['src'] = "./" + imgSrc
-        videoOrImgContainer.replace_with(img)
+    # Remove magnifying glass
+    [x.extract() for x in soup.findAll(class_='magnifier')]
 
-for iframe in soup.findAll('iframe'):
-    recId = ''
-    try:
-        recId = iframe['data-recommend-id']
-    except:
-        continue
-    ytId = re.findall(r'youtube:\/\/(.*)', recId)
-    if not ytId[0]:
-        continue
-    newSrc = 'https://www.youtube.com/embed/' + ytId[0]
-    newIframe = BeautifulSoup('<iframe width="560" height="315" src="' + newSrc + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>', 'html.parser')
-    iframe.replace_with(newIframe)
+    for imageWrapper in soup.findAll(class_="image-hydration-wrapper"):
+        # For some reason, image wrappers have a padding-bottom of a lot. Remove them and move on
+        imageWrapper['style'] = ''
 
-containerDiv = BeautifulSoup('<div></div>', 'html.parser')
+    for videoOrImgContainer in soup.findAll(class_="js_lazy-image"):
+        vid = videoOrImgContainer.find('video')
+        img = videoOrImgContainer.find('img')
+        if not not vid:
+            _, vidSrc = findVidSrc(vid)
+            vid.attrs = {}
+            vid.clear()
+            source = soup.new_tag('source')
+            source['type'] = "video/mp4"
+            source['src'] = "./" + vidSrc
+            vid.append(source)
+            vid['autoplay'] = ""
+            vid['loop'] = ""
+            vid['muted'] = ""
+            videoOrImgContainer.replace_with(vid)
+        if not not img:
+            alt = getattr(img, 'alt', '')
+            _, imgSrc = findImgSrc(img)
+            img.attrs = {}
+            img['alt'] = alt
+            img['src'] = "./" + imgSrc
+            videoOrImgContainer.replace_with(img)
 
-containerDiv.div.append(soup)
+    for iframe in soup.findAll('iframe'):
+        recId = ''
+        try:
+            recId = iframe['data-recommend-id']
+        except:
+            continue
+        ytId = re.findall(r'youtube:\/\/(.*)', recId)
+        if not ytId[0]:
+            continue
+        newSrc = 'https://www.youtube.com/embed/' + ytId[0]
+        newIframe = BeautifulSoup('<iframe width="560" height="315" src="' + newSrc + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>', 'html.parser')
+        iframe.replace_with(newIframe)
 
-finalHTML = containerDiv.prettify()
+    containerDiv = BeautifulSoup('<div></div>', 'html.parser')
 
-finalMD = '''
----
-{{
-title: "{title}",
-tags: {tags},
-authors: ['{author}'],
-published: '{time}',
-attached: [],
-license: 'cc-by-4',
-oldArticle: true
-}}
----
+    containerDiv.div.append(soup)
 
-{article}
-'''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=containerDiv).strip()
+    finalHTML = containerDiv.prettify()
 
-print(finalMD)
+    finalMD = '''
+    ---
+    {{
+    title: "{title}",
+    tags: {tags},
+    authors: ['{author}'],
+    published: '{time}',
+    attached: [],
+    license: 'cc-by-4',
+    oldArticle: true
+    }}
+    ---
+    
+    {article}
+    '''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=containerDiv.encode("utf-8")).strip()
+
+    done_path = os.path.join(entry, 'index.md')
+
+    with open(done_path, 'w', encoding="utf-8") as fp:
+        fp.write(finalMD)
