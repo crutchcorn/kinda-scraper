@@ -101,7 +101,11 @@ for iframe in soup.findAll('iframe'):
     newIframe = BeautifulSoup('<iframe width="560" height="315" src="' + newSrc + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>', 'html.parser')
     iframe.replace_with(newIframe)
 
-finalHTML = soup.prettify()
+containerDiv = BeautifulSoup('<div></div>', 'html.parser')
+
+containerDiv.div.append(soup)
+
+finalHTML = containerDiv.prettify()
 
 finalMD = '''
 ---
@@ -117,6 +121,6 @@ oldArticle: true
 ---
 
 {article}
-'''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=soup).strip()
+'''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=containerDiv).strip()
 
 print(finalMD)
