@@ -56,7 +56,7 @@ for entry in os.scandir(os.path.join(os.path.dirname(__file__), 'dist')):
     if post_meta['author'] == 'Kevin Mai - Reikaze':
         post_meta['author'] = 'reikaze'
 
-    post_meta['title'] = clean_me(post_meta['title'])
+    post_meta['title'] = re.sub(r'"', '\\"', clean_me(post_meta['title']))
 
     soup = BeautifulSoup(html_doc, 'html.parser')
 
@@ -115,20 +115,20 @@ for entry in os.scandir(os.path.join(os.path.dirname(__file__), 'dist')):
     finalHTML = containerDiv.prettify()
 
     finalMD = '''
-    ---
-    {{
-    title: "{title}",
-    tags: {tags},
-    authors: ['{author}'],
-    published: '{time}',
-    attached: [],
-    license: 'cc-by-4',
-    oldArticle: true
-    }}
-    ---
-    
-    {article}
-    '''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=containerDiv.encode("utf-8")).strip()
+---
+{{
+title: "{title}",
+tags: {tags},
+authors: ['{author}'],
+published: '{time}',
+attached: [],
+license: 'cc-by-4',
+oldArticle: true
+}}
+---
+
+{article}
+    '''.format(title=post_meta['title'], tags=json.dumps(post_meta['tags']), author=post_meta['author'], time=post_meta['time'], article=containerDiv).strip()
 
     done_path = os.path.join(entry, 'index.md')
 
